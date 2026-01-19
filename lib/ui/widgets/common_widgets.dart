@@ -113,6 +113,22 @@ class _PlayerCard extends ConsumerState<PlayerCard> {
       ));
     }
 
+    // Show placement if tournament is finished
+    final placement = repo.getPlayerPlacement(widget.player);
+    if (placement != null && widget.standings) {
+      ret.add(const SizedBox(width: 20));
+      ret.add(Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Text("Place"),
+          Text(
+            placement,
+            style: theme.headlineSmall,
+          )
+        ],
+      ));
+    }
+
     return Card(
       clipBehavior: Clip.hardEdge,
       color:

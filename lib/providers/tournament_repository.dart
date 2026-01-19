@@ -132,6 +132,37 @@ class TournamentRepository with _$TournamentRepository {
     return players;
   }
 
+  /// Get player's placement string (1st, 2nd, 3rd, etc.) within their division
+  /// Returns null if tournament is not finished or player has no division
+  String? getPlayerPlacement(Player player) {
+    if (!finished) return null;
+    final divisionId = player.divisionId;
+    if (divisionId == null) return null;
+
+    final standings = getStandings(divisionId);
+    final position = standings.indexWhere((p) => p.id == player.id);
+    if (position < 0) return null;
+
+    return _ordinal(position + 1);
+  }
+
+  /// Convert number to ordinal string (1st, 2nd, 3rd, etc.)
+  String _ordinal(int n) {
+    if (n >= 11 && n <= 13) {
+      return '${n}th';
+    }
+    switch (n % 10) {
+      case 1:
+        return '${n}st';
+      case 2:
+        return '${n}nd';
+      case 3:
+        return '${n}rd';
+      default:
+        return '${n}th';
+    }
+  }
+
   /// Get the opponent for a player in a pairing
   Player? getOpponentInPairing(Player player, Pairing pairing) {
     if (pairing.playerOneId == player.id) {
