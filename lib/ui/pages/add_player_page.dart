@@ -13,12 +13,26 @@ class AddPlayerPage extends ConsumerStatefulWidget {
 }
 
 class _AddPlayerPage extends ConsumerState<AddPlayerPage> {
-  Player ret = Player();
+  String playerName = "";
+  int selectedDivision = 0;
 
   @override
   Widget build(context) {
+    final repo = ref.watch(tournamentManagerProvider);
     final tournamentManager = ref.read(tournamentManagerProvider.notifier);
-    final current = tournamentManager.current;
+
+    final currentTournament = repo.currentTournament;
+    if (currentTournament == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Add Player")),
+        body: const Center(child: Text("No tournament selected")),
+      );
+    }
+
+    // Initialize selected division from tournament
+    if (selectedDivision == 0 && currentTournament.lastDivisionAddedTo != 0) {
+      selectedDivision = currentTournament.lastDivisionAddedTo;
+    }
 
     List<Widget> cards = [
       UICard(
@@ -31,7 +45,7 @@ class _AddPlayerPage extends ConsumerState<AddPlayerPage> {
                 autofocus: true,
                 onChanged: (String value) {
                   setState(() {
-                    ret.name = value;
+                    playerName = value;
                   });
                 },
                 decoration: const InputDecoration(
@@ -43,21 +57,22 @@ class _AddPlayerPage extends ConsumerState<AddPlayerPage> {
           )),
     ];
 
-    if (current.divisions.length > 1) {
+    final divisions = repo.currentDivisions;
+    if (divisions.length > 1) {
       List<DropdownMenuItem<int>> items = [];
-      for (Division division in current.divisions) {
-        items.add(DropdownMenuItem<int>(
-            value: division.number, child: Text(division.name)));
+      for (int i = 0; i < divisions.length; i++) {
+        items.add(
+            DropdownMenuItem<int>(value: i, child: Text(divisions[i].name)));
       }
 
       cards.add(
         UICard(
           "Division",
           DropdownButton(
-            value: current.lastDivisionAddedTo,
+            value: selectedDivision,
             onChanged: (value) {
               setState(() {
-                current.lastDivisionAddedTo = value!;
+                selectedDivision = value!;
               });
             },
             items: items,
@@ -66,21 +81,23 @@ class _AddPlayerPage extends ConsumerState<AddPlayerPage> {
       );
     }
 
-    return (Scaffold(
+    return Scaffold(
       appBar: AppBar(title: const Text("Add Player")),
       body: ListView(
         children: cards,
       ),
-      floatingActionButton: ret.name == ""
+      floatingActionButton: playerName.isEmpty
           ? null
           : FloatingActionButton.extended(
               onPressed: () {
-                tournamentManager.addPlayer(ret);
+                final newPlayer = Player.create(name: playerName);
+                tournamentManager.addPlayer(newPlayer,
+                    divisionIndex: selectedDivision);
                 Navigator.pop(context);
               },
               label: const Text("Save"),
               icon: const Icon(Icons.check),
             ),
-    ));
+    );
   }
 }

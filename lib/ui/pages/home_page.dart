@@ -3,7 +3,6 @@ import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_unfocuser/flutter_unfocuser.dart';
 
-import '../../models/models.dart';
 import '../../providers/tournament_provider.dart';
 import '../widgets/common_widgets.dart';
 import 'add_player_page.dart';
@@ -100,67 +99,92 @@ class SetupPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(tournamentManagerProvider);
+    final repo = ref.watch(tournamentManagerProvider);
     final tournamentManager = ref.read(tournamentManagerProvider.notifier);
 
     List<Widget> ret = [];
 
-    if (tournamentManager.selected && tournamentManager.current.setup()) {
-      List<Widget> rounds = [];
-      for (Bracket b in tournamentManager.current.brackets) {
-        String name = b.divisions[0].name;
-        for (int i = 1; i < b.divisions.length; i++) {
-          name += " + ${b.divisions[i].name}";
-        }
-        rounds.add(
-          Flexible(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  name,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                Text("${b.currentRound}/${b.rounds}",
-                    style: Theme.of(context).textTheme.bodyLarge),
-              ],
+    if (repo.selected) {
+      // Get brackets and build rounds display
+      final brackets = repo.currentBrackets;
+
+      if (brackets.isNotEmpty || repo.currentDivisions.isNotEmpty) {
+        List<Widget> rounds = [];
+        for (final bracket in brackets) {
+          // Build bracket name from divisions
+          final divNames = bracket.divisionIds
+              .map((id) => repo.getDivision(id)?.name ?? '')
+              .where((name) => name.isNotEmpty)
+              .toList();
+          final name = divNames.join(' + ');
+
+          rounds.add(
+            Flexible(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    name,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  Text("${bracket.currentRound}/${bracket.rounds}",
+                      style: Theme.of(context).textTheme.bodyLarge),
+                ],
+              ),
             ),
-          ),
-        );
+          );
+        }
+
+        if (rounds.isNotEmpty) {
+          ret.add(
+            UICard(
+              "Rounds",
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: rounds,
+              ),
+            ),
+          );
+        }
       }
-      ret.add(
-        UICard(
-          "Rounds",
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: rounds,
-          ),
-        ),
-      );
     }
+
+    // Check if tournament has enough players
+    final hasEnoughPlayers =
+        repo.selected && repo.currentTournament!.playerIds.length >= 6;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Setup"),
       ),
       body: selected(
-        model: tournamentManager,
-        child: ret.isNotEmpty
-            ? ListView(
-                clipBehavior: Clip.none,
-                children: ret,
-              )
+        repo: repo,
+        child: ret.isNotEmpty || !hasEnoughPlayers
+            ? ret.isNotEmpty
+                ? ListView(
+                    clipBehavior: Clip.none,
+                    children: ret,
+                  )
+                : const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(50),
+                      child: Text(
+                        "There are less than 6 players in the tournament.",
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
             : const Center(
                 child: Padding(
                   padding: EdgeInsets.all(50),
                   child: Text(
-                    "There are less than 6 players in the tournament.",
+                    "Tournament is ready to start.",
                     textAlign: TextAlign.center,
                   ),
                 ),
               ),
       ),
-      floatingActionButton: ret.isNotEmpty && !tournamentManager.current.started
+      floatingActionButton: hasEnoughPlayers && !repo.started
           ? FloatingActionButton.extended(
               icon: const Icon(Icons.check),
               onPressed: () {
@@ -178,59 +202,68 @@ class TablePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(tournamentManagerProvider);
+    final repo = ref.watch(tournamentManagerProvider);
     final tournamentManager = ref.read(tournamentManagerProvider.notifier);
 
-    if (tournamentManager.selected && tournamentManager.finished) {
-      return Standings(
-        tournament: tournamentManager.current,
-      );
+    if (repo.selected && repo.finished) {
+      return const Standings();
     }
     return Unfocuser(
       minScrollDistance: 0.0,
       child: Scaffold(
-        appBar: tournamentManager.selected
+        appBar: repo.selected
             ? AppBar(
-                title:
-                    Text("Round ${tournamentManager.current.round} Pairings"))
+                title: Text("Round ${repo.currentTournament!.round} Pairings"))
             : AppBar(
                 title: const Text("Pairings"),
               ),
         body: selected(
-          model: tournamentManager,
-          child: tournamentManager.selected
-              ? ListView.builder(
-                  itemCount: (tournamentManager.tables.length),
-                  itemBuilder: (context, index) {
-                    return TableCard(table: tournamentManager.tables[index]);
-                  },
-                )
+          repo: repo,
+          child: repo.selected
+              ? repo.started
+                  ? ListView.builder(
+                      itemCount: repo.currentTables.length,
+                      itemBuilder: (context, index) {
+                        return TableCard(table: repo.currentTables[index]);
+                      },
+                    )
+                  : const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(50),
+                        child: Text(
+                          "Tournament hasn't started yet. Please start it at the setup page.",
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
               : null,
         ),
-        floatingActionButton: tournamentManager.selected &&
-                tournamentManager.started &&
-                tournamentManager.roundFinished
-            ? FloatingActionButton.extended(
-                onPressed: () => tournamentManager.pair(),
-                icon: const Icon(Icons.navigate_next),
-                label: const Text("Pair next round"),
-              )
-            : null,
+        floatingActionButton:
+            repo.selected && repo.started && repo.roundFinished
+                ? FloatingActionButton.extended(
+                    onPressed: () => tournamentManager.pair(),
+                    icon: const Icon(Icons.navigate_next),
+                    label: const Text("Pair next round"),
+                  )
+                : null,
       ),
     );
   }
 }
 
-class Standings extends StatelessWidget {
-  const Standings({super.key, required this.tournament});
-  final Tournament tournament;
+class Standings extends ConsumerWidget {
+  const Standings({super.key});
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.watch(tournamentManagerProvider);
+
     List<Widget> playerCards = [];
-    for (Division division in tournament.divisions) {
-      List<Player> players = division.standings();
+
+    for (final division in repo.currentDivisions) {
+      final players = repo.getStandings(division.id);
       List<Widget> tmp = [];
-      for (Player player in players) {
+      for (final player in players) {
         tmp.add(
           PlayerCard(
             player: player,

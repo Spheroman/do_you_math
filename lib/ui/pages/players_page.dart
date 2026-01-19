@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/models.dart';
 import '../../providers/tournament_provider.dart';
 import '../widgets/common_widgets.dart';
 
@@ -10,19 +9,19 @@ class PlayersPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(tournamentManagerProvider);
-    final tournamentManager = ref.read(tournamentManagerProvider.notifier);
+    final repo = ref.watch(tournamentManagerProvider);
 
     List<Widget> playerCards = [];
-    if (tournamentManager.selected) {
-      for (Division division in tournamentManager.current.divisions) {
+    if (repo.selected) {
+      for (final division in repo.currentDivisions) {
+        final players = repo.getPlayersForDivision(division.id);
         List<Widget> tmp = [];
-        for (Player player in division.players) {
+        for (final player in players) {
           tmp.add(
             PlayerCard(
               player: player,
               color: 1,
-              standings: tournamentManager.finished,
+              standings: repo.finished,
             ),
           );
         }
@@ -46,17 +45,15 @@ class PlayersPage extends ConsumerWidget {
         appBar: AppBar(
           title: const Text("Players"),
         ),
-        floatingActionButton:
-            tournamentManager.selected && !tournamentManager.started
-                ? FloatingActionButton.extended(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/addPlayer');
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text("Add Player"),
-                  )
-                : null,
-        body: selected(
-            model: tournamentManager, child: ListView(children: playerCards)));
+        floatingActionButton: repo.selected && !repo.started
+            ? FloatingActionButton.extended(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/addPlayer');
+                },
+                icon: const Icon(Icons.add),
+                label: const Text("Add Player"),
+              )
+            : null,
+        body: selected(repo: repo, child: ListView(children: playerCards)));
   }
 }

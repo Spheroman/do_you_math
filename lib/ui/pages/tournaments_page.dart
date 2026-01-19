@@ -10,9 +10,8 @@ class TournamentsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(tournamentManagerProvider);
-    final tournaments = state.tournaments;
-    final currentTournament = state.currentTournament;
+    final repo = ref.watch(tournamentManagerProvider);
+    final tournaments = repo.tournaments;
 
     return Scaffold(
         appBar: AppBar(
@@ -33,39 +32,41 @@ class TournamentsPage extends ConsumerWidget {
                   tournaments.first.name,
                   Column(
                     children: [
-                      Text("Divisions: ${tournaments.first.divisions.length}")
+                      Text("Divisions: ${tournaments.first.divisionIds.length}")
                     ],
                   ),
                 ),
                 itemBuilder: (context, index) {
-                  return index < tournaments.length
-                      ? UICard(
-                          clickable: true,
-                          inkWell: InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (BuildContext context) =>
-                                      TournamentPage(
-                                    current: tournaments[index],
-                                  ),
-                                ),
-                              );
-                            },
+                  if (index >= tournaments.length) {
+                    return const SizedBox(height: 10);
+                  }
+
+                  final tournament = tournaments[index];
+                  final isCurrentTournament =
+                      repo.currentTournament?.id == tournament.id;
+
+                  return UICard(
+                    clickable: true,
+                    inkWell: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (BuildContext context) => TournamentPage(
+                              tournament: tournament,
+                            ),
                           ),
-                          tournaments[index].name,
-                          Column(
-                            children: [
-                              Text(
-                                  "Divisions: ${tournaments[index].divisions.length}")
-                            ],
-                          ),
-                          color: index == currentTournament ? 1 : 0,
-                        )
-                      : const SizedBox(
-                          height: 10,
                         );
+                      },
+                    ),
+                    tournament.name,
+                    Column(
+                      children: [
+                        Text("Divisions: ${tournament.divisionIds.length}")
+                      ],
+                    ),
+                    color: isCurrentTournament ? 1 : 0,
+                  );
                 },
               )
             : const Center(

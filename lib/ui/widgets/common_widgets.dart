@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/models.dart';
 import '../../providers/tournament_provider.dart';
+import '../../providers/tournament_repository.dart';
 import '../pages/player_page.dart';
 
 class UICard extends StatelessWidget {
@@ -47,11 +48,12 @@ class UICard extends StatelessWidget {
 }
 
 class PlayerCard extends ConsumerStatefulWidget {
-  const PlayerCard(
-      {super.key,
-      required this.player,
-      required this.color,
-      required this.standings});
+  const PlayerCard({
+    super.key,
+    required this.player,
+    required this.color,
+    required this.standings,
+  });
   final Player player;
   final int color;
   final bool standings;
@@ -63,7 +65,16 @@ class PlayerCard extends ConsumerStatefulWidget {
 class _PlayerCard extends ConsumerState<PlayerCard> {
   @override
   Widget build(context) {
+    final repo = ref.watch(tournamentManagerProvider);
     final theme = Theme.of(context).textTheme;
+
+    // Calculate record display
+    final wins = widget.player.winIds.length;
+    final losses = widget.player.lossIds.length;
+    final ties = widget.player.tieIds.length;
+    final displayWins = widget.player.bye ? wins + 1 : wins;
+    final opponentWinPercent = repo.getOpponentWinPercent(widget.player);
+
     List<Widget> ret = [
       Expanded(
         child: Column(
@@ -75,31 +86,33 @@ class _PlayerCard extends ConsumerState<PlayerCard> {
               style: theme.headlineSmall,
             ),
             Text(
-              "${widget.player.bye ? widget.player.wins.length + 1 : widget.player.wins.length} - ${widget.player.loss.length} - ${widget.player.tie.length}${widget.standings ? "  Opponent Win Percent: ${(widget.player.opponentWinPercent * 100).toStringAsPrecision(4)}%" : ""}",
+              "$displayWins - $losses - $ties${widget.standings ? "  Opponent Win Percent: ${(opponentWinPercent * 100).toStringAsPrecision(4)}%" : ""}",
             )
           ],
         ),
       )
     ];
 
-    if ((widget.player.table.number != -1 || widget.player.bye) &&
-        !widget.standings) {
-      ret.add(const SizedBox(
-        width: 20,
-      ));
+    // Show table info if player is at a table
+    final tableStatus = widget.player.tableStatus;
+    final pairing = repo.getPairing(tableStatus);
+    final showTable =
+        (pairing != null || widget.player.bye) && !widget.standings;
+
+    if (showTable) {
+      ret.add(const SizedBox(width: 20));
       ret.add(Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          const Text(
-            "Table",
-          ),
+          const Text("Table"),
           Text(
-            widget.player.table.name,
+            widget.player.bye ? "Bye" : (pairing?.name ?? ""),
             style: theme.headlineSmall,
           )
         ],
       ));
     }
+
     return Card(
       clipBehavior: Clip.hardEdge,
       color:
@@ -110,7 +123,7 @@ class _PlayerCard extends ConsumerState<PlayerCard> {
             context,
             MaterialPageRoute(
               builder: (BuildContext context) => PlayerPage(
-                player: widget.player,
+                playerId: widget.player.id,
               ),
             ),
           ).whenComplete(
@@ -130,6 +143,11 @@ class _PlayerCard extends ConsumerState<PlayerCard> {
 }
 
 Widget playerInfo(BuildContext context, Player player, bool right, int state) {
+  final wins = player.winIds.length;
+  final losses = player.lossIds.length;
+  final ties = player.tieIds.length;
+  final displayWins = player.bye ? wins + 1 : wins;
+
   var playerText = Text(
     player.name,
     style: Theme.of(context).textTheme.headlineSmall,
@@ -172,8 +190,7 @@ Widget playerInfo(BuildContext context, Player player, bool right, int state) {
                             : [Expanded(child: playerText), icon]
                         : [Expanded(child: playerText)]),
               ),
-              Text(
-                  "${player.bye ? player.wins.length + 1 : player.wins.length} - ${player.loss.length} - ${player.tie.length}"),
+              Text("$displayWins - $losses - $ties"),
             ],
           ),
         ),
@@ -192,14 +209,28 @@ class TableCard extends ConsumerStatefulWidget {
 
 class _TableCard extends ConsumerState<TableCard> {
   int playerFocus = 0;
+
   @override
   Widget build(BuildContext context) {
+    final repo = ref.watch(tournamentManagerProvider);
     final tournamentManager = ref.read(tournamentManagerProvider.notifier);
 
+    // Handle bye table
     if (widget.table.number == -1) {
-      return PlayerCard(
-          player: widget.table.playerOne!, color: 0, standings: false);
+      final player = repo.getPlayer(widget.table.playerOneId ?? '');
+      if (player != null) {
+        return PlayerCard(player: player, color: 0, standings: false);
+      }
+      return const SizedBox.shrink();
     }
+
+    final playerOne = repo.getPlayer(widget.table.playerOneId ?? '');
+    final playerTwo = repo.getPlayer(widget.table.playerTwoId ?? '');
+
+    if (playerOne == null || playerTwo == null) {
+      return const SizedBox.shrink();
+    }
+
     List<Widget> ret = [];
     ret.add(
       Expanded(
@@ -210,14 +241,12 @@ class _TableCard extends ConsumerState<TableCard> {
             });
           },
           child: playerFocus != 1
-              ? playerInfo(
-                  context, widget.table.playerOne!, false, widget.table.winner)
+              ? playerInfo(context, playerOne, false, widget.table.winner)
               : Builder(
                   builder: (BuildContext context) => TextButton.icon(
                       onPressed: () {
-                        widget.table.setWinner(widget.table.playerOne!);
+                        tournamentManager.setWinner(widget.table, 1);
                         Focus.of(context).unfocus();
-                        tournamentManager.update();
                       },
                       label: const Text("Confirm Player 1 Win"),
                       icon: const Icon(Icons.check)),
@@ -237,9 +266,8 @@ class _TableCard extends ConsumerState<TableCard> {
           builder: (context) => playerFocus == 3
               ? TextButton.icon(
                   onPressed: () {
-                    widget.table.tie();
+                    tournamentManager.setWinner(widget.table, 3);
                     Focus.of(context).unfocus();
-                    tournamentManager.update();
                   },
                   label: const Text("Confirm Tie"),
                   icon: const Icon(Icons.check))
@@ -254,17 +282,13 @@ class _TableCard extends ConsumerState<TableCard> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const VerticalDivider(
-                        width: 0,
-                      ),
+                      const VerticalDivider(width: 0),
                       Padding(
                           padding: const EdgeInsets.all(10),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
-                                "Table",
-                              ),
+                              const Text("Table"),
                               Text(
                                 widget.table.name,
                                 style:
@@ -272,9 +296,7 @@ class _TableCard extends ConsumerState<TableCard> {
                               ),
                             ],
                           )),
-                      const VerticalDivider(
-                        width: 0,
-                      ),
+                      const VerticalDivider(width: 0),
                     ],
                   ),
                 ),
@@ -291,14 +313,12 @@ class _TableCard extends ConsumerState<TableCard> {
             });
           },
           child: playerFocus != 2
-              ? playerInfo(
-                  context, widget.table.playerTwo!, true, widget.table.winner)
+              ? playerInfo(context, playerTwo, true, widget.table.winner)
               : Builder(
                   builder: (BuildContext context) => TextButton.icon(
                       onPressed: () {
-                        widget.table.setWinner(widget.table.playerTwo!);
+                        tournamentManager.setWinner(widget.table, 2);
                         Focus.of(context).unfocus();
-                        tournamentManager.update();
                       },
                       label: const Text("Confirm Player 2 Win"),
                       icon: const Icon(Icons.check)),
@@ -320,8 +340,8 @@ class _TableCard extends ConsumerState<TableCard> {
   }
 }
 
-Widget selected({required TournamentManager model, Widget? child}) {
-  if (model.selected) {
+Widget selected({required TournamentRepository repo, Widget? child}) {
+  if (repo.selected) {
     return child!;
   }
   return const Center(

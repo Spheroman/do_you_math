@@ -1,55 +1,42 @@
-import 'player.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:uuid/uuid.dart';
 
-class Pairing {
-  String name;
-  int number;
-  Map<int, Player> players = {};
-  bool finished = false;
-  int winner = 0;
+part 'pairing.freezed.dart';
 
-  Pairing({required this.number, required this.name});
+@freezed
+class Pairing with _$Pairing {
+  const Pairing._();
 
-  void reset() {
-    players = {};
-    finished = false;
-    winner = 0;
-  }
+  const factory Pairing({
+    required String id,
+    required String name,
+    required int number,
+    String? playerOneId,
+    String? playerTwoId,
+    @Default(false) bool finished,
+    @Default(0) int winner, // 0=none, 1=playerOne, 2=playerTwo, 3=tie
+  }) = _Pairing;
 
-  void setWinner(Player player) {
-    if (playerOne == player) {
-      winner = 1;
-      playerOne!.beat(playerTwo!);
-    } else {
-      winner = 2;
-      playerTwo!.beat(playerOne!);
-    }
-    finished = true;
-  }
+  factory Pairing.create({required int number, required String name}) =>
+      Pairing(
+        id: const Uuid().v4(),
+        name: name,
+        number: number,
+      );
 
-  void tie() {
-    playerOne!.tied(playerTwo!);
-    winner = 3;
-    finished = true;
-  }
+  /// Create a bye pairing (singleton-style ID)
+  factory Pairing.bye() => const Pairing(
+        id: 'bye',
+        name: 'Bye',
+        number: -1,
+        finished: true,
+      );
 
-  @override
-  String toString() {
-    if (number == -1) {
-      return "${playerOne?.name} has the bye";
-    }
-    return "${playerOne?.name} vs ${playerTwo?.name} at Table $name";
-  }
-
-  void addPlayer(Player player) {
-    if (!players.containsKey(1)) {
-      players.addAll({1: player});
-      player.table = this;
-    } else if (!players.containsKey(2) && number != -1) {
-      players.addAll({2: player});
-      player.table = this;
-    }
-  }
-
-  Player? get playerOne => players[1];
-  Player? get playerTwo => players[2];
+  /// Create a dropped status placeholder
+  factory Pairing.dropped() => const Pairing(
+        id: 'dropped',
+        name: 'Dropped',
+        number: -2,
+        finished: true,
+      );
 }

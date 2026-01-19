@@ -1,43 +1,23 @@
-import 'player.dart';
-import 'tournament.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:uuid/uuid.dart';
 
-class Division {
-  List<Player> players = [];
-  late Tournament parent;
-  String name = "";
-  int number = -1;
+part 'division.freezed.dart';
 
-  Division(this.name, this.number);
+@freezed
+class Division with _$Division {
+  const Division._();
 
-  void addPlayer(Player player) {
-    int idx = players.indexWhere((element) =>
-        element.name.toLowerCase().compareTo(player.name.toLowerCase()) > 0);
-    if (idx == -1) {
-      players.add(player);
-    } else {
-      players.insert(idx, player);
-    }
-    player.division = this;
-  }
+  const factory Division({
+    required String id,
+    @Default("") String name,
+    @Default(-1) int number,
+    String? parentId, // Tournament ID
+    @Default([]) List<String> playerIds,
+  }) = _Division;
 
-  List<Player> standings() {
-    List<Player> sorted = List.from(players);
-    sorted.sort((a, b) => b.score.compareTo(a.score));
-    List<Player> ret = [];
-    while (sorted.isNotEmpty) {
-      List<Player> tmp = [];
-      int i = sorted.first.score;
-      while (sorted.isNotEmpty && sorted.first.score == i) {
-        tmp.add(sorted.removeAt(0));
-      }
-      tmp.sort((a, b) => b.opponentWinPercent.compareTo(a.opponentWinPercent));
-      ret += tmp;
-    }
-    return ret;
-  }
-
-  @override
-  String toString() {
-    return players.toString();
-  }
+  factory Division.create(String name, int number) => Division(
+        id: const Uuid().v4(),
+        name: name,
+        number: number,
+      );
 }

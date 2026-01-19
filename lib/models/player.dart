@@ -1,58 +1,36 @@
-import 'pairing.dart';
-import 'division.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:uuid/uuid.dart';
 
-class Player {
-  String name = "";
-  late Division division;
-  Pairing table = Pairing(number: -1, name: "Bye");
-  List<Player> wins = [], loss = [], tie = [];
-  bool bye = false;
-  bool dropped = false;
+part 'player.freezed.dart';
 
-  Player({this.name = ""});
+@freezed
+class Player with _$Player {
+  const Player._();
 
-  int get score {
-    return 3 * wins.length + 1 * tie.length + (bye ? 3 : 0);
-  }
+  const factory Player({
+    required String id,
+    @Default("") String name,
+    String? divisionId,
+    @Default("bye") String tableStatus, // "bye", "dropped", or pairing ID
+    @Default([]) List<String> winIds,
+    @Default([]) List<String> lossIds,
+    @Default([]) List<String> tieIds,
+    @Default(false) bool bye,
+    @Default(false) bool dropped,
+  }) = _Player;
 
-  List<Player> get opponents {
-    return wins + loss + tie;
-  }
+  factory Player.create({String name = ""}) => Player(
+        id: const Uuid().v4(),
+        name: name,
+      );
 
-  double get opponentWinPercent {
-    if (opponents.isEmpty) return 0;
-    double ret = 0;
-    for (Player opponent in opponents) {
-      ret += opponent.winPercent;
-    }
-    return ret / opponents.length;
-  }
+  /// Score: 3 points per win, 1 per tie, 3 for bye
+  int get score => 3 * winIds.length + 1 * tieIds.length + (bye ? 3 : 0);
 
+  /// All opponent IDs from wins, losses, and ties
+  List<String> get opponentIds => [...winIds, ...lossIds, ...tieIds];
+
+  /// Win percentage (wins / total opponents)
   double get winPercent =>
-      opponents.isEmpty ? 0 : wins.length / opponents.length;
-
-  @override
-  String toString() => name;
-
-  void beat(Player player) {
-    loss.remove(player);
-    tie.remove(player);
-    wins.remove(player);
-    wins.add(player);
-    player.wins.remove(this);
-    player.tie.remove(this);
-    player.loss.remove(this);
-    player.loss.add(this);
-  }
-
-  void tied(Player player) {
-    tie.remove(this);
-    tie.add(player);
-    loss.remove(player);
-    wins.remove(player);
-    player.tie.remove(this);
-    player.tie.add(this);
-    player.wins.remove(this);
-    player.loss.remove(this);
-  }
+      opponentIds.isEmpty ? 0 : winIds.length / opponentIds.length;
 }

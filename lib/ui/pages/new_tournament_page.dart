@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/models.dart';
 import '../../providers/tournament_provider.dart';
 import '../widgets/common_widgets.dart';
 
@@ -13,10 +12,9 @@ class NewTournamentPage extends ConsumerStatefulWidget {
 }
 
 class _NewTournamentPage extends ConsumerState<NewTournamentPage> {
-  Tournament tournament = Tournament("Tournament");
-
+  String tournamentName = "Tournament";
+  List<String> divisionNames = ["Division 1"];
   int show = 0;
-  int divisions = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +29,7 @@ class _NewTournamentPage extends ConsumerState<NewTournamentPage> {
                 textCapitalization: TextCapitalization.sentences,
                 onChanged: (String value) {
                   setState(() {
-                    tournament.name = value;
+                    tournamentName = value;
                     if (show == 0) show += 2;
                   });
                 },
@@ -50,19 +48,21 @@ class _NewTournamentPage extends ConsumerState<NewTournamentPage> {
               IconButton(
                 onPressed: () {
                   setState(() {
-                    if (divisions > 1) divisions--;
+                    if (divisionNames.length > 1) {
+                      divisionNames.removeLast();
+                    }
                   });
                 },
                 icon: const Icon(Icons.remove),
               ),
               Text(
-                divisions.toString(),
+                divisionNames.length.toString(),
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               IconButton(
                 onPressed: () {
                   setState(() {
-                    divisions++;
+                    divisionNames.add("Division ${divisionNames.length + 1}");
                   });
                 },
                 icon: const Icon(Icons.add),
@@ -70,10 +70,10 @@ class _NewTournamentPage extends ConsumerState<NewTournamentPage> {
             ],
           )),
     ];
-    tournament.matchDivision(divisions);
-    for (Division division in tournament.divisions) {
+
+    for (int i = 0; i < divisionNames.length; i++) {
       cards.add(UICard(
-          "Division ${division.number + 1}",
+          "Division ${i + 1}",
           Column(
             children: [
               Center(
@@ -85,7 +85,7 @@ class _NewTournamentPage extends ConsumerState<NewTournamentPage> {
                   ),
                   onChanged: (String s) {
                     setState(() {
-                      division.name = s;
+                      divisionNames[i] = s;
                     });
                   },
                 ),
@@ -96,14 +96,15 @@ class _NewTournamentPage extends ConsumerState<NewTournamentPage> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("New Tournament")),
-      body: ListView(children: cards.sublist(0, show + divisions)),
+      body: ListView(children: cards.sublist(0, show + divisionNames.length)),
       floatingActionButton: show < 2
           ? null
           : FloatingActionButton.extended(
               onPressed: () {
                 final tournamentManager =
                     ref.read(tournamentManagerProvider.notifier);
-                tournamentManager.add(tournament);
+                tournamentManager.createTournamentWithDivisions(
+                    tournamentName, divisionNames);
                 Navigator.pop(context);
               },
               icon: const Icon(Icons.check),
