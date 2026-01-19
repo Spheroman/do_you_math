@@ -1,8 +1,9 @@
-import 'tournament.dart';
-import 'package:do_you_math/bracket.dart';
 import 'package:flutter/material.dart';
-import 'players/player_page.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../models/models.dart';
+import '../../providers/tournament_provider.dart';
+import '../pages/player_page.dart';
 
 class UICard extends StatelessWidget {
   final String name;
@@ -45,7 +46,7 @@ class UICard extends StatelessWidget {
   }
 }
 
-class PlayerCard extends StatefulWidget {
+class PlayerCard extends ConsumerStatefulWidget {
   const PlayerCard(
       {super.key,
       required this.player,
@@ -56,10 +57,10 @@ class PlayerCard extends StatefulWidget {
   final bool standings;
 
   @override
-  State<PlayerCard> createState() => _PlayerCard();
+  ConsumerState<PlayerCard> createState() => _PlayerCard();
 }
 
-class _PlayerCard extends State<PlayerCard> {
+class _PlayerCard extends ConsumerState<PlayerCard> {
   @override
   Widget build(context) {
     final theme = Theme.of(context).textTheme;
@@ -181,18 +182,20 @@ Widget playerInfo(BuildContext context, Player player, bool right, int state) {
   );
 }
 
-class TableCard extends StatefulWidget {
+class TableCard extends ConsumerStatefulWidget {
   final Pairing table;
   const TableCard({super.key, required this.table});
 
   @override
-  State<TableCard> createState() => _TableCard();
+  ConsumerState<TableCard> createState() => _TableCard();
 }
 
-class _TableCard extends State<TableCard> {
+class _TableCard extends ConsumerState<TableCard> {
   int playerFocus = 0;
   @override
   Widget build(BuildContext context) {
+    final tournamentManager = ref.read(tournamentManagerProvider.notifier);
+
     if (widget.table.number == -1) {
       return PlayerCard(
           player: widget.table.playerOne!, color: 0, standings: false);
@@ -214,8 +217,7 @@ class _TableCard extends State<TableCard> {
                       onPressed: () {
                         widget.table.setWinner(widget.table.playerOne!);
                         Focus.of(context).unfocus();
-                        Provider.of<TournamentModel>(context, listen: false)
-                            .update();
+                        tournamentManager.update();
                       },
                       label: const Text("Confirm Player 1 Win"),
                       icon: const Icon(Icons.check)),
@@ -237,8 +239,7 @@ class _TableCard extends State<TableCard> {
                   onPressed: () {
                     widget.table.tie();
                     Focus.of(context).unfocus();
-                    Provider.of<TournamentModel>(context, listen: false)
-                        .update();
+                    tournamentManager.update();
                   },
                   label: const Text("Confirm Tie"),
                   icon: const Icon(Icons.check))
@@ -297,8 +298,7 @@ class _TableCard extends State<TableCard> {
                       onPressed: () {
                         widget.table.setWinner(widget.table.playerTwo!);
                         Focus.of(context).unfocus();
-                        Provider.of<TournamentModel>(context, listen: false)
-                            .update();
+                        tournamentManager.update();
                       },
                       label: const Text("Confirm Player 2 Win"),
                       icon: const Icon(Icons.check)),
@@ -320,7 +320,7 @@ class _TableCard extends State<TableCard> {
   }
 }
 
-Widget selected({required TournamentModel model, Widget? child}) {
+Widget selected({required TournamentManager model, Widget? child}) {
   if (model.selected) {
     return child!;
   }

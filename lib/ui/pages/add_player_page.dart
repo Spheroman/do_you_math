@@ -1,21 +1,25 @@
-import 'package:do_you_math/bracket.dart';
-import 'package:do_you_math/models.dart';
 import 'package:flutter/material.dart';
-import 'package:do_you_math/tournament.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AddPlayerPage extends StatefulWidget {
+import '../../models/models.dart';
+import '../../providers/tournament_provider.dart';
+import '../widgets/common_widgets.dart';
+
+class AddPlayerPage extends ConsumerStatefulWidget {
   const AddPlayerPage({super.key});
 
   @override
-  State<AddPlayerPage> createState() => _AddPlayerPage();
+  ConsumerState<AddPlayerPage> createState() => _AddPlayerPage();
 }
 
-class _AddPlayerPage extends State<AddPlayerPage> {
+class _AddPlayerPage extends ConsumerState<AddPlayerPage> {
   Player ret = Player();
+
   @override
-  build(context) {
-    var t = Provider.of<TournamentModel>(context);
+  Widget build(context) {
+    final tournamentManager = ref.read(tournamentManagerProvider.notifier);
+    final current = tournamentManager.current;
+
     List<Widget> cards = [
       UICard(
           "Player Name",
@@ -39,9 +43,9 @@ class _AddPlayerPage extends State<AddPlayerPage> {
           )),
     ];
 
-    if (t.current.divisions.length > 1) {
+    if (current.divisions.length > 1) {
       List<DropdownMenuItem<int>> items = [];
-      for (Division division in t.current.divisions) {
+      for (Division division in current.divisions) {
         items.add(DropdownMenuItem<int>(
             value: division.number, child: Text(division.name)));
       }
@@ -50,10 +54,10 @@ class _AddPlayerPage extends State<AddPlayerPage> {
         UICard(
           "Division",
           DropdownButton(
-            value: t.current.lastDivisionAddedTo,
+            value: current.lastDivisionAddedTo,
             onChanged: (value) {
               setState(() {
-                t.current.lastDivisionAddedTo = value!;
+                current.lastDivisionAddedTo = value!;
               });
             },
             items: items,
@@ -71,7 +75,7 @@ class _AddPlayerPage extends State<AddPlayerPage> {
           ? null
           : FloatingActionButton.extended(
               onPressed: () {
-                t.addPlayer(ret);
+                tournamentManager.addPlayer(ret);
                 Navigator.pop(context);
               },
               label: const Text("Save"),

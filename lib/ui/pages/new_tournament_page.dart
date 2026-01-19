@@ -1,17 +1,18 @@
-import 'package:do_you_math/bracket.dart';
-import 'package:do_you_math/models.dart';
 import 'package:flutter/material.dart';
-import 'package:do_you_math/tournament.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class NewTournamentPage extends StatefulWidget {
+import '../../models/models.dart';
+import '../../providers/tournament_provider.dart';
+import '../widgets/common_widgets.dart';
+
+class NewTournamentPage extends ConsumerStatefulWidget {
   const NewTournamentPage({super.key});
 
   @override
-  State<NewTournamentPage> createState() => _NewTournamentPage();
+  ConsumerState<NewTournamentPage> createState() => _NewTournamentPage();
 }
 
-class _NewTournamentPage extends State<NewTournamentPage> {
+class _NewTournamentPage extends ConsumerState<NewTournamentPage> {
   Tournament tournament = Tournament("Tournament");
 
   int show = 0;
@@ -100,8 +101,9 @@ class _NewTournamentPage extends State<NewTournamentPage> {
           ? null
           : FloatingActionButton.extended(
               onPressed: () {
-                var t = Provider.of<TournamentModel>(context, listen: false);
-                t.add(tournament);
+                final tournamentManager =
+                    ref.read(tournamentManagerProvider.notifier);
+                tournamentManager.add(tournament);
                 Navigator.pop(context);
               },
               icon: const Icon(Icons.check),

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:provider/provider.dart';
-import 'bracket.dart';
+import 'ui/pages/home_page.dart';
 
 void main(List<String> args) {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => TournamentModel(),
-      child: const MyApp(),
+    const ProviderScope(
+      child: MyApp(),
     ),
   );
 }

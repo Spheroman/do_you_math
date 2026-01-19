@@ -1,21 +1,23 @@
-import 'package:do_you_math/bracket.dart';
-import 'package:do_you_math/models.dart';
 import 'package:flutter/material.dart';
-import 'package:do_you_math/tournament.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PlayerPage extends StatefulWidget {
+import '../../models/models.dart';
+import '../../providers/tournament_provider.dart';
+import '../widgets/common_widgets.dart';
+
+class PlayerPage extends ConsumerStatefulWidget {
   final Player player;
   const PlayerPage({super.key, required this.player});
 
   @override
-  State<PlayerPage> createState() => _PlayerPage();
+  ConsumerState<PlayerPage> createState() => _PlayerPage();
 }
 
-class _PlayerPage extends State<PlayerPage> {
+class _PlayerPage extends ConsumerState<PlayerPage> {
   @override
   Widget build(BuildContext context) {
-    var t = Provider.of<TournamentModel>(context, listen: false);
+    final tournamentManager = ref.read(tournamentManagerProvider.notifier);
+
     List<Widget> children = [];
     if (widget.player.table.number == -1) {
       children.add(
@@ -43,7 +45,7 @@ class _PlayerPage extends State<PlayerPage> {
           PlayerCard(
             player: opponent,
             color: 1,
-            standings: t.finished,
+            standings: tournamentManager.finished,
           ),
         ),
       );
@@ -93,7 +95,7 @@ class _PlayerPage extends State<PlayerPage> {
               value();
             },
             itemBuilder: (context) => [
-              t.started
+              tournamentManager.started
                   ? PopupMenuItem<Function>(
                       value: () {
                         showDialog(
@@ -114,9 +116,11 @@ class _PlayerPage extends State<PlayerPage> {
                             ],
                           ),
                         ).then((value) {
-                          if (value) {
-                            t.drop(widget.player);
-                            Navigator.pop(context, true);
+                          if (value == true) {
+                            tournamentManager.drop(widget.player);
+                            if (context.mounted) {
+                              Navigator.pop(context, true);
+                            }
                           }
                         });
                       },
