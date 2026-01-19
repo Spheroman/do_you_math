@@ -2,26 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:io';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_adaptive_scaffold/flutter_adaptive_scaffold.dart';
 import 'package:flutter_unfocuser/flutter_unfocuser.dart';
 import 'tournament.dart';
 import 'models.dart';
 import 'players/add_player_page.dart';
-import 'players/player_page.dart';
 import 'players/players_page.dart';
 import 'tournaments/new_tournament_page.dart';
 import 'tournaments/tournaments_page.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 Future<void> main() async {
-  await Hive.initFlutter();
-  Hive.registerAdapter(TournamentAdapter());
-  var box = await Hive.openBox('tournaments');
   runApp(
     ChangeNotifierProvider(
       create: (context) => TournamentModel(),
@@ -31,8 +23,7 @@ Future<void> main() async {
 }
 
 class TournamentModel extends ChangeNotifier {
-  late var box = Hive.box("tournaments");
-  late final List<Tournament> tournaments = List.from(box.toMap().values);
+  final List<Tournament> tournaments = [];
   int currentTournament = -1;
 
   bool get selected =>
@@ -82,7 +73,6 @@ class TournamentModel extends ChangeNotifier {
     if (t == current) {
       currentTournament = -1;
     }
-    box.deleteAt(tournaments.indexOf(t));
     return tournaments.remove(t);
   }
 
@@ -113,7 +103,6 @@ class TournamentModel extends ChangeNotifier {
   void add(Tournament t) {
     currentTournament = tournaments.length;
     tournaments.add(t);
-    box.put(currentTournament, t);
     notifyListeners();
   }
 
@@ -178,7 +167,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // Define the children to display within the body at different breakpoints.
 
     return Container(
-        color: Theme.of(context).colorScheme.background,
+        color: Theme.of(context).colorScheme.surface,
         child: AdaptiveScaffold(
           internalAnimations: false,
           // An option to override the default breakpoints used for small, medium,

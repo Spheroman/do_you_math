@@ -2,7 +2,6 @@ import 'package:do_you_math/bracket.dart';
 import 'package:do_you_math/models.dart';
 import 'package:do_you_math/tournaments/tournament_page.dart';
 import 'package:flutter/material.dart';
-import 'package:do_you_math/tournament.dart';
 import 'package:provider/provider.dart';
 
 class TournamentsPage extends StatefulWidget {

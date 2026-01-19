@@ -1,32 +1,20 @@
 import 'package:chinese_postman/chinese_postman.dart';
-import 'package:hive/hive.dart';
 
-part 'tournament.g.dart';
-
-@HiveType(typeId: 1)
 class Tournament {
-  @HiveField(0)
   List<Bracket> brackets = [];
 
-  @HiveField(1)
   List<Division> divisions = [];
 
-  @HiveField(2)
   List<Pairing> tables = [];
 
-  @HiveField(3)
   List<Player> players = [];
 
-  @HiveField(4)
   String name = "";
 
-  @HiveField(5)
   int lastDivisionAddedTo = 0;
 
-  @HiveField(6)
   bool started = false;
 
-  @HiveField(7)
   int round = 0;
 
   Tournament(this.name);

@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'tournament.dart';
 import 'package:do_you_math/bracket.dart';
 import 'package:flutter/material.dart';
